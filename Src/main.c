@@ -46,7 +46,8 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-int Time_cnt=0;
+uint16_t Time_Cnt=0;
+
 uint8_t UART1_RxByte[1];
 uint8_t UART1_RxBuffer[16];
 uint8_t UART1_RxBufPtr = 0;
@@ -56,8 +57,20 @@ uint8_t UART1_TxBuffer[16];
 uint8_t UART1_TxBufPtr = 0;
 uint8_t UART1_TxFlag = 0;//0 1
 
-int32_t Speed_Want_Left = 0;
-int32_t Speed_Want_Right = 0;
+uint8_t CAN1_TxFlag = 0;//0 1
+uint8_t CAN1_RxFlag = 0;//0 1
+
+uint8_t Motor_Enable = 0;
+uint16_t Motor_Stop_Cnt = 0;
+
+int Speed_Want_Left = 0;
+int Speed_Want_Right = 0;
+
+union Hex_Float_Transfer
+{
+	uint8_t Hex_Num[4];
+	float Float_Num;
+}Hex_to_Float,Float_to_Hex;
 
 /* USER CODE END PV */
 
@@ -127,7 +140,20 @@ int main(void)
 		
 		if(UART1_RxFlag == 3)
 		{
-			HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_1);
+			HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_1);//receive a uart message successfully
+			
+			Hex_to_Float.Hex_Num[0] = UART1_RxBuffer[2];
+			Hex_to_Float.Hex_Num[1] = UART1_RxBuffer[3];
+			Hex_to_Float.Hex_Num[2] = UART1_RxBuffer[4];
+			Hex_to_Float.Hex_Num[3] = UART1_RxBuffer[5];
+			Speed_Want_Left = (int)Hex_to_Float.Float_Num;
+			Hex_to_Float.Hex_Num[0] = UART1_RxBuffer[6];
+			Hex_to_Float.Hex_Num[1] = UART1_RxBuffer[7];
+			Hex_to_Float.Hex_Num[2] = UART1_RxBuffer[8];
+			Hex_to_Float.Hex_Num[3] = UART1_RxBuffer[9];
+			Speed_Want_Right = (int)Hex_to_Float.Float_Num;
+			
+			Motor_Enable = 1;//enable motor
 			
 			for(int i = 0;i < 16;i++)
 			{
@@ -135,6 +161,19 @@ int main(void)
 			}
 			UART1_RxBufPtr = 0;
 			UART1_RxFlag = 0;
+			Motor_Stop_Cnt = 0;
+		}
+		
+		if(Motor_Enable == 1)
+		{
+			CAN1_TxFlag = 1;
+		}
+		else
+		{
+			Speed_Want_Left = 0;
+			Speed_Want_Right = 0;
+			Motor_Stop_Cnt = 0;
+			CAN1_TxFlag = 1;
 		}
 		
   /* USER CODE END WHILE */

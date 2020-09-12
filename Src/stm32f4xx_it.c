@@ -36,7 +36,7 @@
 #include "stm32f4xx_it.h"
 
 /* USER CODE BEGIN 0 */
-extern int Time_cnt;
+extern uint16_t Time_Cnt;
 extern uint8_t UART1_RxByte[1];
 extern uint8_t UART1_RxBuffer[16];
 extern uint8_t UART1_RxBufPtr;
@@ -46,6 +46,15 @@ extern uint8_t UART1_TxByte[1];
 extern uint8_t UART1_TxBuffer[16];
 extern uint8_t UART1_TxBufPtr;
 extern uint8_t UART1_TxFlag;//0 1 101
+
+extern uint8_t CAN1_TxFlag;//0 1
+extern uint8_t CAN1_RxFlag;//0 1
+
+extern uint8_t Motor_Enable;
+extern uint16_t Motor_Stop_Cnt;
+
+extern int Speed_Want_Left;
+extern int Speed_Want_Right;
 
 void HAL_GPIO_TogglePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
 /* USER CODE END 0 */
@@ -274,12 +283,32 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim==(&htim7))
 	{
-//		Time_cnt+=1;
-//		if(Time_cnt>=100)
+//		Time_Cnt+=1;
+//		if(Time_Cnt>=100)
 //		{
-//			Time_cnt = 0;
+//			Time_Cnt = 0;
 //			HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_1);
 //		}
+		
+		if(Motor_Enable == 1)
+		{
+			Motor_Stop_Cnt += 1;
+			if(Motor_Stop_Cnt >= 200)
+			{
+				Speed_Want_Left = 0;
+				Speed_Want_Right = 0;
+				Motor_Enable = 0;
+				Motor_Stop_Cnt = 0;
+				CAN1_TxFlag = 1;//send massage immediately
+			}
+		}
+		
+		//CAN send message include speed_want and speed ask
+		if(CAN1_TxFlag == 1)
+		{
+			;
+		}
+		
 		if(UART1_TxFlag == 1)
 		{
 			HAL_UART_Transmit(&huart1,UART1_TxBuffer,11,2);
@@ -288,8 +317,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 		if(UART1_RxFlag == 1 || UART1_RxFlag == 2)
 		{
-			Time_cnt+=1;
-			if(Time_cnt>=20)
+			Time_Cnt+=1;
+			if(Time_Cnt>=20)
 			{
 				for(int i = 0;i < 16;i++)
 				{
@@ -297,9 +326,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				}
 				UART1_RxBufPtr = 0;
 				UART1_RxFlag = 0;
-				Time_cnt = 0;
+				Time_Cnt = 0;
 			}
 		}
+		
 	}
 }
 
