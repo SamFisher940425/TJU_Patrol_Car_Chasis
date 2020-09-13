@@ -59,6 +59,8 @@ uint8_t UART1_TxFlag = 0;//0 1
 
 uint8_t CAN1_TxFlag = 0;//0 1
 uint8_t CAN1_RxFlag = 0;//0 1
+CanTxMsgTypeDef CAN1_TxMessage;
+CanRxMsgTypeDef CAN1_RxMessage;
 
 uint8_t Motor_Enable = 0;
 uint16_t Motor_Stop_Cnt = 0;
@@ -85,6 +87,7 @@ void MX_NVIC_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
+void CAN1_Filter_Configure(void);
 
 /* USER CODE END PFP */
 
@@ -123,6 +126,11 @@ int main(void)
   MX_NVIC_Init();
 
   /* USER CODE BEGIN 2 */
+	hcan1.pRxMsg = &CAN1_RxMessage;
+	hcan1.pTxMsg = &CAN1_TxMessage;
+	CAN1_Filter_Configure();
+	HAL_CAN_Receive_IT(&hcan1,CAN_FIFO0);
+//	HAL_CAN_Receive_IT(&hcan1,CAN_FIFO1);
 	HAL_UART_Receive_IT(&huart1,UART1_RxByte,1);
 	HAL_TIM_Base_Start_IT(&htim7);
   /* USER CODE END 2 */
@@ -173,7 +181,7 @@ int main(void)
 			Speed_Want_Left = 0;
 			Speed_Want_Right = 0;
 			Motor_Stop_Cnt = 0;
-			CAN1_TxFlag = 1;
+//			CAN1_TxFlag = 1;
 		}
 		
   /* USER CODE END WHILE */
@@ -262,7 +270,7 @@ void MX_CAN1_Init(void)
   hcan1.Init.TTCM = DISABLE;
   hcan1.Init.ABOM = DISABLE;
   hcan1.Init.AWUM = DISABLE;
-  hcan1.Init.NART = DISABLE;
+  hcan1.Init.NART = ENABLE;
   hcan1.Init.RFLM = DISABLE;
   hcan1.Init.TXFP = DISABLE;
   HAL_CAN_Init(&hcan1);
@@ -333,6 +341,24 @@ void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void CAN1_Filter_Configure(void)
+{
+	CAN_FilterConfTypeDef  CAN1_FilerConf;
+	
+	CAN1_FilerConf.FilterIdHigh=0X0000;     //32位ID
+	CAN1_FilerConf.FilterIdLow=0X0000;
+  CAN1_FilerConf.FilterMaskIdHigh=0X0000; //32位MASK
+  CAN1_FilerConf.FilterMaskIdLow=0X0000;  
+  CAN1_FilerConf.FilterFIFOAssignment=CAN_FILTER_FIFO0;//过滤器0关联到FIFO0
+  CAN1_FilerConf.FilterNumber=0;          //过滤器0
+  CAN1_FilerConf.FilterMode=CAN_FILTERMODE_IDMASK;
+  CAN1_FilerConf.FilterScale=CAN_FILTERSCALE_32BIT;
+  CAN1_FilerConf.FilterActivation=ENABLE; //激活滤波器0
+  CAN1_FilerConf.BankNumber=14;
+	
+	HAL_CAN_ConfigFilter(&hcan1,&CAN1_FilerConf);
+	
+}
 
 /* USER CODE END 4 */
 
