@@ -57,16 +57,18 @@ uint8_t UART1_TxBuffer[16];
 uint8_t UART1_TxBufPtr = 0;
 uint8_t UART1_TxFlag = 0;//0 1
 
-uint8_t CAN1_TxFlag = 0;//0 1
-uint8_t CAN1_RxFlag = 0;//0 1
+uint8_t CAN1_TxFlag = 0;//bit0 set speed_L,bit1 set speed_R,bit2 asked speed_L,bit3 asked speed_R
+uint8_t CAN1_RxFlag = 0;//bit0 get speed_L,bit1 get speed_R
 CanTxMsgTypeDef CAN1_TxMessage;
 CanRxMsgTypeDef CAN1_RxMessage;
 
 uint8_t Motor_Enable = 0;
 uint16_t Motor_Stop_Cnt = 0;
 
-int Speed_Want_Left = 0;
-int Speed_Want_Right = 0;
+int16_t Speed_Want_Left = 0;
+int16_t Speed_Want_Right = 0;
+int16_t Speed_Real_Left = 0;
+int16_t Speed_Real_Right = 0;
 
 union Hex_Float_Transfer
 {
@@ -154,14 +156,12 @@ int main(void)
 			Hex_to_Float.Hex_Num[1] = UART1_RxBuffer[3];
 			Hex_to_Float.Hex_Num[2] = UART1_RxBuffer[4];
 			Hex_to_Float.Hex_Num[3] = UART1_RxBuffer[5];
-			Speed_Want_Left = (int)Hex_to_Float.Float_Num;
+			Speed_Want_Left = (int16_t)Hex_to_Float.Float_Num;
 			Hex_to_Float.Hex_Num[0] = UART1_RxBuffer[6];
 			Hex_to_Float.Hex_Num[1] = UART1_RxBuffer[7];
 			Hex_to_Float.Hex_Num[2] = UART1_RxBuffer[8];
 			Hex_to_Float.Hex_Num[3] = UART1_RxBuffer[9];
-			Speed_Want_Right = (int)Hex_to_Float.Float_Num;
-			
-			Motor_Enable = 1;//enable motor
+			Speed_Want_Right = (int16_t)Hex_to_Float.Float_Num;
 			
 			for(int i = 0;i < 16;i++)
 			{
@@ -169,19 +169,30 @@ int main(void)
 			}
 			UART1_RxBufPtr = 0;
 			UART1_RxFlag = 0;
+			
+			Motor_Enable = 1;//enable motor
+			CAN1_TxFlag |= 0x03;
 			Motor_Stop_Cnt = 0;
 		}
 		
-		if(Motor_Enable == 1)
+		if(CAN1_RxFlag == 3)//both bit0 and bit1 are 1
 		{
-			CAN1_TxFlag = 1;
-		}
-		else
-		{
-			Speed_Want_Left = 0;
-			Speed_Want_Right = 0;
-			Motor_Stop_Cnt = 0;
-//			CAN1_TxFlag = 1;
+			UART1_TxBuffer[0] = 0x55;
+			UART1_TxBuffer[1] = 0xAA;
+			Float_to_Hex.Float_Num = (float)Speed_Real_Left;
+			UART1_TxBuffer[2] = Float_to_Hex.Hex_Num[0];
+			UART1_TxBuffer[3] = Float_to_Hex.Hex_Num[1];
+			UART1_TxBuffer[4] = Float_to_Hex.Hex_Num[2];
+			UART1_TxBuffer[5] = Float_to_Hex.Hex_Num[3];
+			Float_to_Hex.Float_Num = (float)Speed_Real_Right;
+			UART1_TxBuffer[6] = Float_to_Hex.Hex_Num[0];
+			UART1_TxBuffer[7] = Float_to_Hex.Hex_Num[1];
+			UART1_TxBuffer[8] = Float_to_Hex.Hex_Num[2];
+			UART1_TxBuffer[9] = Float_to_Hex.Hex_Num[3];
+			UART1_TxBuffer[10] = 0x0A;
+			
+			CAN1_RxFlag = 0;
+			UART1_TxFlag = 1;
 		}
 		
   /* USER CODE END WHILE */
