@@ -47,6 +47,7 @@ UART_HandleTypeDef huart1;
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 uint16_t Time_Cnt=0;
+uint8_t Init_Flag=0;
 
 uint8_t UART1_RxByte[1];
 uint8_t UART1_RxBuffer[16];
@@ -69,6 +70,8 @@ int16_t Speed_Want_Left = 0;
 int16_t Speed_Want_Right = 0;
 int16_t Speed_Real_Left = 0;
 int16_t Speed_Real_Right = 0;
+
+//right wheel can id is 01 and speed direction is positive
 
 union Hex_Float_Transfer
 {
@@ -132,9 +135,47 @@ int main(void)
 	hcan1.pTxMsg = &CAN1_TxMessage;
 	CAN1_Filter_Configure();
 	HAL_CAN_Receive_IT(&hcan1,CAN_FIFO0);
-//	HAL_CAN_Receive_IT(&hcan1,CAN_FIFO1);
+	HAL_CAN_Receive_IT(&hcan1,CAN_FIFO1);
 	HAL_UART_Receive_IT(&huart1,UART1_RxByte,1);
 	HAL_TIM_Base_Start_IT(&htim7);
+	
+	if(Init_Flag == 0)
+	{
+		CAN1_TxMessage.StdId = 0x02;
+		CAN1_TxMessage.ExtId = 0x02;
+		CAN1_TxMessage.IDE = CAN_ID_STD;
+		CAN1_TxMessage.RTR = CAN_RTR_DATA;
+		CAN1_TxMessage.DLC = 8;
+		CAN1_TxMessage.Data[0]=0x00;
+		CAN1_TxMessage.Data[1]=0x1A;
+		CAN1_TxMessage.Data[2]=0x02;
+		CAN1_TxMessage.Data[3]=0x00;
+		CAN1_TxMessage.Data[4]=0xC4;
+		CAN1_TxMessage.Data[5]=0x0A;
+		CAN1_TxMessage.Data[6]=0x0A;
+		CAN1_TxMessage.Data[7]=0x0A;
+		HAL_CAN_Transmit(&hcan1,1);//speed mode acc 0x0a
+		
+		CAN1_TxMessage.StdId = 0x01;
+		CAN1_TxMessage.ExtId = 0x01;
+		CAN1_TxMessage.IDE = CAN_ID_STD;
+		CAN1_TxMessage.RTR = CAN_RTR_DATA;
+		CAN1_TxMessage.DLC = 8;
+		CAN1_TxMessage.Data[0]=0x00;
+		CAN1_TxMessage.Data[1]=0x1A;
+		CAN1_TxMessage.Data[2]=0x02;
+		CAN1_TxMessage.Data[3]=0x00;
+		CAN1_TxMessage.Data[4]=0xC4;
+		CAN1_TxMessage.Data[5]=0x0A;
+		CAN1_TxMessage.Data[6]=0x0A;
+		CAN1_TxMessage.Data[7]=0x0A;
+		HAL_CAN_Transmit(&hcan1,1);
+		
+		HAL_Delay(500);
+		
+		Init_Flag = 1;
+	}
+	
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -150,7 +191,7 @@ int main(void)
 		
 		if(UART1_RxFlag == 3)
 		{
-			HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_1);//receive a uart message successfully
+//			HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_1);//receive a uart message successfully
 			
 			Hex_to_Float.Hex_Num[0] = UART1_RxBuffer[2];
 			Hex_to_Float.Hex_Num[1] = UART1_RxBuffer[3];
@@ -175,7 +216,7 @@ int main(void)
 			Motor_Stop_Cnt = 0;
 		}
 		
-		if(CAN1_RxFlag == 3)//both bit0 and bit1 are 1
+		if(CAN1_RxFlag == 0x03)//both bit0 and bit1 are 1
 		{
 			UART1_TxBuffer[0] = 0x55;
 			UART1_TxBuffer[1] = 0xAA;
@@ -191,7 +232,6 @@ int main(void)
 			UART1_TxBuffer[9] = Float_to_Hex.Hex_Num[3];
 			UART1_TxBuffer[10] = 0x0A;
 			
-			CAN1_RxFlag = 0;
 			UART1_TxFlag = 1;
 		}
 		
@@ -281,7 +321,7 @@ void MX_CAN1_Init(void)
   hcan1.Init.TTCM = DISABLE;
   hcan1.Init.ABOM = DISABLE;
   hcan1.Init.AWUM = DISABLE;
-  hcan1.Init.NART = ENABLE;
+  hcan1.Init.NART = DISABLE;
   hcan1.Init.RFLM = DISABLE;
   hcan1.Init.TXFP = DISABLE;
   HAL_CAN_Init(&hcan1);
@@ -297,7 +337,7 @@ void MX_TIM7_Init(void)
   htim7.Instance = TIM7;
   htim7.Init.Prescaler = 9000;
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 50;
+  htim7.Init.Period = 100;
   HAL_TIM_Base_Init(&htim7);
 
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
