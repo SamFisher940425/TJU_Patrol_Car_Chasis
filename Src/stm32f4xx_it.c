@@ -369,8 +369,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			else
 				CAN1_TxMessage.Data[4]=0x00;
 			CAN1_TxMessage.Data[5]=0x06;
-			CAN1_TxMessage.Data[6]=(((int16_t)((-1)*Speed_Want_Left/3000.0*8192.0)) >> 8) & 0x00FF;
-			CAN1_TxMessage.Data[7]=((int16_t)((-1)*Speed_Want_Left/3000.0*8192.0)) & 0x00FF;
+			CAN1_TxMessage.Data[6]=(((int16_t)((-1.0)*Speed_Want_Left/3000.0*8192.0)) >> 8) & 0x00FF;
+			CAN1_TxMessage.Data[7]=((int16_t)((-1.0)*Speed_Want_Left/3000.0*8192.0)) & 0x00FF;
 			
 			HAL_CAN_Transmit(&hcan1,1);//speed set motor enable/disable
 			
@@ -400,14 +400,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			HAL_CAN_Transmit(&hcan1,1);//speed set motor enable/disable
 			
 			CAN1_TxFlag &= ~0x02;
-		}
-		
-		if(UART1_TxFlag == 1)
-		{
-			HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_1);
-			HAL_UART_Transmit(&huart1,UART1_TxBuffer,11,2);
-			UART1_TxFlag = 0;
-			CAN1_RxFlag &= ~0x03;
 		}
 
 		if(UART1_RxFlag == 1 || UART1_RxFlag == 2)
@@ -463,9 +455,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		//Byte 3-11//
 		else if (UART1_RxFlag == 2)
 		{
-			if(UART1_RxBufPtr >= 10)
+			if(UART1_RxBufPtr >= 11)
 			{
-				if(UART1_RxByte[0] == 0x0A && UART1_RxBufPtr == 10)
+				if(UART1_RxByte[0] == 0x0A && UART1_RxBufPtr == 11)
 				{
 					UART1_RxFlag = 3;
 				}
@@ -498,11 +490,11 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 	if(hcan==(&hcan1))
 	{
 		HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_0);//
-		if(CAN1_RxMessage.StdId == 0x02)
+		if(CAN1_RxMessage.StdId == 0x02 && (CAN1_TxFlag & 0x04) != 0)
 		{
 			if(CAN1_RxMessage.Data[1] == 0x2b &&CAN1_RxMessage.Data[2] == 0xe4)
 			{
-				Speed_Real_Left = (-1)*(((CAN1_RxMessage.Data[3] << 8)|CAN1_RxMessage.Data[4])/8192.0*3000.0);
+				Speed_Real_Left = (-1)*((int16_t)((CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4])/8192.0*3000.0);//
 				CAN1_RxFlag |= 0x01;
 				CAN1_TxFlag &= ~0x04;
 			}
@@ -513,11 +505,11 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 			}
 		}
 		
-		if(CAN1_RxMessage.StdId == 0x01)
+		if(CAN1_RxMessage.StdId == 0x01 && (CAN1_TxFlag & 0x08) != 0)
 		{
 			if(CAN1_RxMessage.Data[1] == 0x2b && CAN1_RxMessage.Data[2] == 0xe4)
 			{
-				Speed_Real_Right = ((CAN1_RxMessage.Data[3] << 8)|CAN1_RxMessage.Data[4])/8192.0*3000.0;
+				Speed_Real_Right = ((int16_t)(CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4])/8192.0*3000.0;//((CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4])/8192.0*3000.0
 				CAN1_RxFlag |= 0x02;
 				CAN1_TxFlag &= ~0x08;
 			}
