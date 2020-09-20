@@ -146,6 +146,8 @@ int main(void)
 	
 	if(Init_Flag == 0)
 	{
+		HAL_Delay(1000);
+		
 		CAN1_TxMessage.StdId = 0x02;
 		CAN1_TxMessage.ExtId = 0x02;
 		CAN1_TxMessage.IDE = CAN_ID_STD;
@@ -159,7 +161,7 @@ int main(void)
 		CAN1_TxMessage.Data[5]=0x0A;
 		CAN1_TxMessage.Data[6]=0x0A;
 		CAN1_TxMessage.Data[7]=0x0A;
-		HAL_CAN_Transmit(&hcan1,1);//speed mode acc 0x0a
+		HAL_CAN_Transmit_IT(&hcan1);//speed mode acc 0x0a
 		
 		CAN1_TxMessage.StdId = 0x01;
 		CAN1_TxMessage.ExtId = 0x01;
@@ -174,7 +176,7 @@ int main(void)
 		CAN1_TxMessage.Data[5]=0x0A;
 		CAN1_TxMessage.Data[6]=0x0A;
 		CAN1_TxMessage.Data[7]=0x0A;
-		HAL_CAN_Transmit(&hcan1,1);
+		HAL_CAN_Transmit_IT(&hcan1);
 		
 		HAL_Delay(500);
 		
