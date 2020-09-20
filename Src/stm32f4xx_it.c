@@ -267,7 +267,7 @@ void USART1_IRQHandler(void)
   /* USER CODE END USART1_IRQn 0 */
   HAL_UART_IRQHandler(&huart1);
   /* USER CODE BEGIN USART1_IRQn 1 */
-	HAL_UART_Receive_IT(&huart1,UART1_RxByte,1);
+	
   /* USER CODE END USART1_IRQn 1 */
 }
 
@@ -326,7 +326,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			CAN1_TxMessage.Data[5]=0xe4;
 			CAN1_TxMessage.Data[6]=0x00;
 			CAN1_TxMessage.Data[7]=0x00;
-			HAL_CAN_Transmit(&hcan1,1);
+			HAL_CAN_Transmit_IT(&hcan1);
 			
 			CAN1_TxFlag |= 0x04;
 		}
@@ -347,7 +347,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			CAN1_TxMessage.Data[5]=0xe4;
 			CAN1_TxMessage.Data[6]=0x00;
 			CAN1_TxMessage.Data[7]=0x00;
-			HAL_CAN_Transmit(&hcan1,1);
+			HAL_CAN_Transmit_IT(&hcan1);
 			
 			CAN1_TxFlag |= 0x08;
 		}
@@ -372,7 +372,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			CAN1_TxMessage.Data[6]=(((int16_t)((-1.0)*Speed_Want_Left/3000.0*8192.0)) >> 8) & 0x00FF;
 			CAN1_TxMessage.Data[7]=((int16_t)((-1.0)*Speed_Want_Left/3000.0*8192.0)) & 0x00FF;
 			
-			HAL_CAN_Transmit(&hcan1,1);//speed set motor enable/disable
+			HAL_CAN_Transmit_IT(&hcan1);//speed set motor enable/disable
 			
 			CAN1_TxFlag &= ~0x01;
 		}
@@ -397,9 +397,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			CAN1_TxMessage.Data[6]=(((int16_t)(Speed_Want_Right/3000.0*8192.0)) >> 8) & 0x00FF;
 			CAN1_TxMessage.Data[7]=((int16_t)(Speed_Want_Right/3000.0*8192.0)) & 0x00FF;
 			
-			HAL_CAN_Transmit(&hcan1,1);//speed set motor enable/disable
+			HAL_CAN_Transmit_IT(&hcan1);//speed set motor enable/disable
 			
 			CAN1_TxFlag &= ~0x02;
+		}
+		
+		if(UART1_TxFlag == 1)
+		{
+			HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_1);
+			HAL_UART_Transmit_IT(&huart1,UART1_TxBuffer,12);
+			UART1_TxFlag = 0;
+			CAN1_RxFlag &= ~0x03;
 		}
 
 		if(UART1_RxFlag == 1 || UART1_RxFlag == 2)
@@ -482,6 +490,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 			UART1_RxBufPtr = 0;
 			UART1_RxFlag = 0;
 		}
+		
+		HAL_UART_Receive_IT(&huart1,UART1_RxByte,1);
 	}
 }
 
@@ -522,12 +532,5 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 	}
 }
 
-void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
-{
-	if(hcan==(&hcan1))
-	{
-		HAL_CAN_WakeUp(&hcan1);
-	}
-}
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

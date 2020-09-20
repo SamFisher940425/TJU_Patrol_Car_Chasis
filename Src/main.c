@@ -270,14 +270,6 @@ int main(void)
 			UART1_TxFlag = 1;
 		}
 		
-		if(UART1_TxFlag == 1)
-		{
-			HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_1);
-			HAL_UART_Transmit(&huart1,UART1_TxBuffer,12,2);
-			UART1_TxFlag = 0;
-			CAN1_RxFlag &= ~0x03;
-		}
-		
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
@@ -362,8 +354,8 @@ void MX_CAN1_Init(void)
   hcan1.Init.BS1 = CAN_BS1_8TQ;
   hcan1.Init.BS2 = CAN_BS2_6TQ;
   hcan1.Init.TTCM = DISABLE;
-  hcan1.Init.ABOM = DISABLE;
-  hcan1.Init.AWUM = DISABLE;
+  hcan1.Init.ABOM = ENABLE;
+  hcan1.Init.AWUM = ENABLE;
   hcan1.Init.NART = DISABLE;
   hcan1.Init.RFLM = DISABLE;
   hcan1.Init.TXFP = DISABLE;
