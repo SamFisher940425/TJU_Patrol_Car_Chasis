@@ -38,6 +38,8 @@
 /* USER CODE BEGIN 0 */
 extern uint16_t Time_Cnt;
 extern uint8_t Init_Flag;
+extern uint8_t Ask_Speed_L_Cnt;
+extern uint8_t Ask_Speed_R_Cnt;
 
 extern uint8_t UART1_RxByte[1];
 extern uint8_t UART1_RxBuffer[16];
@@ -311,7 +313,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		}
 		
 		//if CAN1_RxFlag bit0 is 0,ask speed_L
-		if((CAN1_RxFlag & 0x01) == 0 && (CAN1_TxFlag & 0x04) == 0 && (CAN1_TxFlag & 0x01) == 0 && Init_Flag != 0)
+		if((CAN1_RxFlag & 0x01) == 0 && (CAN1_TxFlag & 0x04) == 0 && Init_Flag != 0)
 		{
 			CAN1_TxMessage.StdId = 0x02;
 			CAN1_TxMessage.ExtId = 0x02;
@@ -329,10 +331,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			HAL_CAN_Transmit_IT(&hcan1);
 			
 			CAN1_TxFlag |= 0x04;
+			Ask_Speed_L_Cnt = 0;
 		}
 		
 		//if CAN1_RxFlag bit1 is 0,ask speed_R
-		if((CAN1_RxFlag & 0x02) == 0 && (CAN1_TxFlag & 0x08) == 0 && (CAN1_TxFlag & 0x02) == 0 && Init_Flag != 0)
+		if((CAN1_RxFlag & 0x02) == 0 && (CAN1_TxFlag & 0x08) == 0 && Init_Flag != 0)
 		{
 			CAN1_TxMessage.StdId = 0x01;
 			CAN1_TxMessage.ExtId = 0x01;
@@ -350,6 +353,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			HAL_CAN_Transmit_IT(&hcan1);
 			
 			CAN1_TxFlag |= 0x08;
+			Ask_Speed_R_Cnt = 0;
 		}
 		
 		//CAN send message L
@@ -407,7 +411,26 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_1);
 			HAL_UART_Transmit_IT(&huart1,UART1_TxBuffer,12);
 			UART1_TxFlag = 0;
-			CAN1_RxFlag &= ~0x03;
+		}
+		
+		if((CAN1_TxFlag & 0x04) != 0)
+		{
+			Ask_Speed_L_Cnt +=1;
+			if(Ask_Speed_L_Cnt >= 100)
+			{
+				CAN1_TxFlag &= ~0x04;
+				Ask_Speed_L_Cnt = 0;
+			}
+		}
+		
+		if((CAN1_TxFlag & 0x08) != 0)
+		{
+			Ask_Speed_R_Cnt +=1;
+			if(Ask_Speed_R_Cnt >= 100)
+			{
+				CAN1_TxFlag &= ~0x08;
+				Ask_Speed_R_Cnt = 0;
+			}
 		}
 
 		if(UART1_RxFlag == 1 || UART1_RxFlag == 2)
@@ -502,9 +525,9 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 		HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_0);//
 		if(CAN1_RxMessage.StdId == 0x02 && (CAN1_TxFlag & 0x04) != 0)
 		{
-			if(CAN1_RxMessage.Data[1] == 0x2b &&CAN1_RxMessage.Data[2] == 0xe4)
+			if(CAN1_RxMessage.Data[1] == 0x2b && CAN1_RxMessage.Data[2] == 0xe4 && (CAN1_RxFlag & 0x01) == 0)
 			{
-				Speed_Real_Left = (-1)*((int16_t)((CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4])/8192.0*3000.0);//
+				Speed_Real_Left = (-1)*(((int16_t)((CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4]))/8192.0*3000.0);//
 				CAN1_RxFlag |= 0x01;
 				CAN1_TxFlag &= ~0x04;
 			}
@@ -517,9 +540,9 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 		
 		if(CAN1_RxMessage.StdId == 0x01 && (CAN1_TxFlag & 0x08) != 0)
 		{
-			if(CAN1_RxMessage.Data[1] == 0x2b && CAN1_RxMessage.Data[2] == 0xe4)
+			if(CAN1_RxMessage.Data[1] == 0x2b && CAN1_RxMessage.Data[2] == 0xe4 && (CAN1_RxFlag & 0x02) == 0)
 			{
-				Speed_Real_Right = ((int16_t)(CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4])/8192.0*3000.0;//((CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4])/8192.0*3000.0
+				Speed_Real_Right = ((int16_t)((CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4]))/8192.0*3000.0;//((CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4])/8192.0*3000.0
 				CAN1_RxFlag |= 0x02;
 				CAN1_TxFlag &= ~0x08;
 			}

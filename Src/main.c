@@ -48,6 +48,8 @@ UART_HandleTypeDef huart1;
 /* Private variables ---------------------------------------------------------*/
 uint16_t Time_Cnt=0;
 uint8_t Init_Flag=0;
+uint8_t Ask_Speed_L_Cnt=0;
+uint8_t Ask_Speed_R_Cnt=0;
 
 uint8_t UART1_RxByte[1];
 uint8_t UART1_RxBuffer[16];
@@ -196,16 +198,22 @@ int main(void)
 		{
 //			HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_1);//receive a uart message successfully
 			
+			Motor_Enable = 1;//enable motor
+			Motor_Stop_Cnt = 0;
+			
 			Hex_to_Float.Hex_Num[0] = UART1_RxBuffer[2];
 			Hex_to_Float.Hex_Num[1] = UART1_RxBuffer[3];
 			Hex_to_Float.Hex_Num[2] = UART1_RxBuffer[4];
 			Hex_to_Float.Hex_Num[3] = UART1_RxBuffer[5];
 			Speed_Want_Left = (int16_t)Hex_to_Float.Float_Num;
+			CAN1_TxFlag |= 0x01;
+			
 			Hex_to_Float.Hex_Num[0] = UART1_RxBuffer[6];
 			Hex_to_Float.Hex_Num[1] = UART1_RxBuffer[7];
 			Hex_to_Float.Hex_Num[2] = UART1_RxBuffer[8];
 			Hex_to_Float.Hex_Num[3] = UART1_RxBuffer[9];
 			Speed_Want_Right = (int16_t)Hex_to_Float.Float_Num;
+			CAN1_TxFlag |= 0x02;
 			
 			Light_Want_Status = UART1_RxBuffer[10];
 			
@@ -216,9 +224,6 @@ int main(void)
 			UART1_RxBufPtr = 0;
 			UART1_RxFlag = 0;
 			
-			Motor_Enable = 1;//enable motor
-			CAN1_TxFlag |= 0x03;
-			Motor_Stop_Cnt = 0;
 		}
 		
 		switch(Light_Want_Status)
@@ -254,16 +259,21 @@ int main(void)
 		{
 			UART1_TxBuffer[0] = 0x55;
 			UART1_TxBuffer[1] = 0xAA;
+			
 			Float_to_Hex.Float_Num = (float)Speed_Real_Left;
+			CAN1_RxFlag &= ~0x01;
 			UART1_TxBuffer[2] = Float_to_Hex.Hex_Num[0];
 			UART1_TxBuffer[3] = Float_to_Hex.Hex_Num[1];
 			UART1_TxBuffer[4] = Float_to_Hex.Hex_Num[2];
 			UART1_TxBuffer[5] = Float_to_Hex.Hex_Num[3];
+			
 			Float_to_Hex.Float_Num = (float)Speed_Real_Right;
+			CAN1_RxFlag &= ~0x02;
 			UART1_TxBuffer[6] = Float_to_Hex.Hex_Num[0];
 			UART1_TxBuffer[7] = Float_to_Hex.Hex_Num[1];
 			UART1_TxBuffer[8] = Float_to_Hex.Hex_Num[2];
 			UART1_TxBuffer[9] = Float_to_Hex.Hex_Num[3];
+			
 			UART1_TxBuffer[10] = Light_Real_Status;
 			UART1_TxBuffer[11] = 0x0A;
 			
