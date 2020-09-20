@@ -357,7 +357,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		}
 		
 		//CAN send message L
-		if((CAN1_TxFlag & 0x01) != 0)
+		if((CAN1_TxFlag & 0x01) != 0 && Init_Flag != 0)
 		{
 			CAN1_TxMessage.StdId = 0x02;
 			CAN1_TxMessage.ExtId = 0x02;
@@ -382,7 +382,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		}
 		
 		//CAN send message R
-		if((CAN1_TxFlag & 0x02) != 0)
+		if((CAN1_TxFlag & 0x02) != 0 && Init_Flag != 0)
 		{
 			CAN1_TxMessage.StdId = 0x01;
 			CAN1_TxMessage.ExtId = 0x01;
