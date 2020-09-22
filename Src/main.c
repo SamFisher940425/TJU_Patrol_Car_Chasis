@@ -208,6 +208,8 @@ int main(void)
 			Hex_to_Float.Hex_Num[2] = UART1_RxBuffer[4];
 			Hex_to_Float.Hex_Num[3] = UART1_RxBuffer[5];
 			Speed_Want_Left = (int16_t)Hex_to_Float.Float_Num;
+			if(Speed_Want_Left>=3000.0)Speed_Want_Left=3000.0;
+			if(Speed_Want_Left<=-3000.0)Speed_Want_Left=-3000.0;
 			CAN1_TxFlag |= 0x01;
 			
 			Hex_to_Float.Hex_Num[0] = UART1_RxBuffer[6];
@@ -215,6 +217,8 @@ int main(void)
 			Hex_to_Float.Hex_Num[2] = UART1_RxBuffer[8];
 			Hex_to_Float.Hex_Num[3] = UART1_RxBuffer[9];
 			Speed_Want_Right = (int16_t)Hex_to_Float.Float_Num;
+			if(Speed_Want_Right>=3000.0)Speed_Want_Right=3000.0;
+			if(Speed_Want_Right<=-3000.0)Speed_Want_Right=-3000.0;
 			CAN1_TxFlag |= 0x02;
 			
 			Light_Want_Status = UART1_RxBuffer[10];
@@ -281,6 +285,11 @@ int main(void)
 			
 			UART1_TxFlag = 1;
 		}
+		
+		if(Speed_Want_Left>=3000.0)Speed_Want_Left=3000.0;
+		if(Speed_Want_Left<=-3000.0)Speed_Want_Left=-3000.0;
+		if(Speed_Want_Right>=3000.0)Speed_Want_Right=3000.0;
+		if(Speed_Want_Right<=-3000.0)Speed_Want_Right=-3000.0;
 		
   /* USER CODE END WHILE */
 

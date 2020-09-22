@@ -313,7 +313,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		}
 		
 		//if CAN1_RxFlag bit0 is 0,ask speed_L
-		if((CAN1_RxFlag & 0x01) == 0 && (CAN1_TxFlag & 0x04) == 0 && Init_Flag != 0)
+		if((CAN1_RxFlag & 0x01) == 0 && (CAN1_TxFlag & 0x04) == 0 && (CAN1_TxFlag & 0x01) == 0 && Init_Flag != 0)
 		{
 			CAN1_TxMessage.StdId = 0x02;
 			CAN1_TxMessage.ExtId = 0x02;
@@ -335,7 +335,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		}
 		
 		//if CAN1_RxFlag bit1 is 0,ask speed_R
-		if((CAN1_RxFlag & 0x02) == 0 && (CAN1_TxFlag & 0x08) == 0 && Init_Flag != 0)
+		if((CAN1_RxFlag & 0x02) == 0 && (CAN1_TxFlag & 0x08) == 0 && (CAN1_TxFlag & 0x02) == 0 && Init_Flag != 0)
 		{
 			CAN1_TxMessage.StdId = 0x01;
 			CAN1_TxMessage.ExtId = 0x01;
@@ -436,7 +436,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		if(UART1_RxFlag == 1 || UART1_RxFlag == 2)
 		{
 			Time_Cnt+=1;
-			if(Time_Cnt>=20)
+			if(Time_Cnt>=25)
 			{
 				for(int i = 0;i < 16;i++)
 				{
