@@ -37,6 +37,8 @@
 
 /* USER CODE BEGIN 0 */
 extern uint16_t Time_Cnt;
+extern uint16_t UART1_Time_Cnt;
+extern uint8_t Ask_Position_Yaw_Cnt;//20210802
 extern uint8_t Init_Flag;
 extern uint8_t Ask_Speed_L_Cnt;
 extern uint8_t Ask_Speed_R_Cnt;
@@ -44,18 +46,17 @@ extern uint8_t Ask_Speed_R_Cnt;
 extern uint8_t UART1_RxByte[1];
 extern uint8_t UART1_RxBuffer[16];
 extern uint8_t UART1_RxBufPtr;
-extern uint8_t UART1_RxFlag;
+extern uint8_t UART1_RxFlag;//0 1 2 3 101
 
 extern uint8_t UART1_TxByte[1];
 extern uint8_t UART1_TxBuffer[16];
 extern uint8_t UART1_TxBufPtr;
-extern uint8_t UART1_TxFlag;//0 1 101
+extern uint8_t UART1_TxFlag;//0 1
 
 extern uint8_t CAN1_TxFlag;//0 1
 extern uint8_t CAN1_RxFlag;//0 1
 extern CanTxMsgTypeDef CAN1_TxMessage;
 extern CanRxMsgTypeDef CAN1_RxMessage;
-
 
 extern uint8_t Motor_Enable;
 extern uint16_t Motor_Stop_Cnt;
@@ -64,6 +65,9 @@ extern int16_t Speed_Want_Left;
 extern int16_t Speed_Want_Right;
 extern int16_t Speed_Real_Left;
 extern int16_t Speed_Real_Right;
+
+extern uint8_t Ask_Yaw_Position_Flag; //20210802
+extern int32_t Yaw_Positon; //20210802
 
 void HAL_GPIO_TogglePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
 /* USER CODE END 0 */
@@ -315,7 +319,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		//if CAN1_RxFlag bit0 is 0,ask speed_L
 		if((CAN1_RxFlag & 0x01) == 0 && (CAN1_TxFlag & 0x04) == 0 && (CAN1_TxFlag & 0x01) == 0 && Init_Flag != 0)
 		{
-			CAN1_TxMessage.StdId = 0x02;
+			/*CAN1_TxMessage.StdId = 0x02;
 			CAN1_TxMessage.ExtId = 0x02;
 			CAN1_TxMessage.IDE = CAN_ID_STD;
 			CAN1_TxMessage.RTR = CAN_RTR_DATA;
@@ -328,7 +332,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			CAN1_TxMessage.Data[5]=0xe4;
 			CAN1_TxMessage.Data[6]=0x00;
 			CAN1_TxMessage.Data[7]=0x00;
-			HAL_CAN_Transmit_IT(&hcan1);
+			HAL_CAN_Transmit_IT(&hcan1);*/
 			
 			CAN1_TxFlag |= 0x04;
 			Ask_Speed_L_Cnt = 0;
@@ -337,7 +341,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		//if CAN1_RxFlag bit1 is 0,ask speed_R
 		if((CAN1_RxFlag & 0x02) == 0 && (CAN1_TxFlag & 0x08) == 0 && (CAN1_TxFlag & 0x02) == 0 && Init_Flag != 0)
 		{
-			CAN1_TxMessage.StdId = 0x01;
+			/*CAN1_TxMessage.StdId = 0x01;
 			CAN1_TxMessage.ExtId = 0x01;
 			CAN1_TxMessage.IDE = CAN_ID_STD;
 			CAN1_TxMessage.RTR = CAN_RTR_DATA;
@@ -350,7 +354,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			CAN1_TxMessage.Data[5]=0xe4;
 			CAN1_TxMessage.Data[6]=0x00;
 			CAN1_TxMessage.Data[7]=0x00;
-			HAL_CAN_Transmit_IT(&hcan1);
+			HAL_CAN_Transmit_IT(&hcan1);*/
 			
 			CAN1_TxFlag |= 0x08;
 			Ask_Speed_R_Cnt = 0;
@@ -359,7 +363,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		//CAN send message L
 		if((CAN1_TxFlag & 0x01) != 0 && Init_Flag != 0)
 		{
-			CAN1_TxMessage.StdId = 0x02;
+			/*CAN1_TxMessage.StdId = 0x02;
 			CAN1_TxMessage.ExtId = 0x02;
 			CAN1_TxMessage.IDE = CAN_ID_STD;
 			CAN1_TxMessage.RTR = CAN_RTR_DATA;
@@ -376,7 +380,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			CAN1_TxMessage.Data[6]=(((int16_t)((-1.0)*Speed_Want_Left/3000.0*8192.0)) >> 8) & 0x00FF;
 			CAN1_TxMessage.Data[7]=((int16_t)((-1.0)*Speed_Want_Left/3000.0*8192.0)) & 0x00FF;
 			
-			HAL_CAN_Transmit_IT(&hcan1);//speed set motor enable/disable
+			HAL_CAN_Transmit_IT(&hcan1);//speed set motor enable/disable*/
 			
 			CAN1_TxFlag &= ~0x01;
 		}
@@ -384,7 +388,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		//CAN send message R
 		if((CAN1_TxFlag & 0x02) != 0 && Init_Flag != 0)
 		{
-			CAN1_TxMessage.StdId = 0x01;
+			/*CAN1_TxMessage.StdId = 0x01;
 			CAN1_TxMessage.ExtId = 0x01;
 			CAN1_TxMessage.IDE = CAN_ID_STD;
 			CAN1_TxMessage.RTR = CAN_RTR_DATA;
@@ -401,7 +405,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			CAN1_TxMessage.Data[6]=(((int16_t)(Speed_Want_Right/3000.0*8192.0)) >> 8) & 0x00FF;
 			CAN1_TxMessage.Data[7]=((int16_t)(Speed_Want_Right/3000.0*8192.0)) & 0x00FF;
 			
-			HAL_CAN_Transmit_IT(&hcan1);//speed set motor enable/disable
+			HAL_CAN_Transmit_IT(&hcan1);//speed set motor enable/disable*/
 			
 			CAN1_TxFlag &= ~0x02;
 		}
@@ -432,11 +436,20 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				Ask_Speed_R_Cnt = 0;
 			}
 		}
+		
+		if(Ask_Yaw_Position_Flag != 0) // 20210802
+		{
+			Ask_Position_Yaw_Cnt += 1;
+		}
+		else
+		{
+			if(Ask_Position_Yaw_Cnt != 0)Ask_Position_Yaw_Cnt = 0;
+		}
 
 		if(UART1_RxFlag == 1 || UART1_RxFlag == 2)
 		{
-			Time_Cnt+=1;
-			if(Time_Cnt>=25)
+			UART1_Time_Cnt+=1;
+			if(UART1_Time_Cnt>=25)
 			{
 				for(int i = 0;i < 16;i++)
 				{
@@ -444,7 +457,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				}
 				UART1_RxBufPtr = 0;
 				UART1_RxFlag = 0;
-				Time_Cnt = 0;
+				UART1_Time_Cnt = 0;
 			}
 		}
 		
@@ -523,35 +536,45 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 	if(hcan==(&hcan1))
 	{
 		HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_0);//
-		if(CAN1_RxMessage.StdId == 0x02 && (CAN1_TxFlag & 0x04) != 0)
+//		if(CAN1_RxMessage.StdId == 0x02 && (CAN1_TxFlag & 0x04) != 0)
+//		{
+//			if(CAN1_RxMessage.Data[1] == 0x2b && CAN1_RxMessage.Data[2] == 0xe4 && (CAN1_RxFlag & 0x01) == 0)
+//			{
+//				Speed_Real_Left = (-1)*(((int16_t)((CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4]))/8192.0*3000.0);//
+//				CAN1_RxFlag |= 0x01;
+//				CAN1_TxFlag &= ~0x04;
+//			}
+//			else if(CAN1_RxMessage.Data[1] == 0x2c && CAN1_RxMessage.Data[2] == 0xe4)
+//			{
+//				CAN1_RxFlag &= ~0x01;
+//				CAN1_TxFlag &= ~0x04;
+//			}
+//		}
+//		
+//		if(CAN1_RxMessage.StdId == 0x01 && (CAN1_TxFlag & 0x08) != 0)
+//		{
+//			if(CAN1_RxMessage.Data[1] == 0x2b && CAN1_RxMessage.Data[2] == 0xe4 && (CAN1_RxFlag & 0x02) == 0)
+//			{
+//				Speed_Real_Right = ((int16_t)((CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4]))/8192.0*3000.0;//((CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4])/8192.0*3000.0
+//				CAN1_RxFlag |= 0x02;
+//				CAN1_TxFlag &= ~0x08;
+//			}
+//			else if(CAN1_RxMessage.Data[1] == 0x2c && CAN1_RxMessage.Data[2] == 0xe4)
+//			{
+//				CAN1_RxFlag &= ~0x02;
+//				CAN1_TxFlag &= ~0x08;
+//			}
+//		}
+
+    if(CAN1_RxMessage.StdId == 0x0585)
 		{
-			if(CAN1_RxMessage.Data[1] == 0x2b && CAN1_RxMessage.Data[2] == 0xe4 && (CAN1_RxFlag & 0x01) == 0)
+			if(CAN1_RxMessage.Data[0] == 0x43 && CAN1_RxMessage.Data[1] == 0x0c && CAN1_RxMessage.Data[2] == 0x60 && CAN1_RxMessage.Data[3] == 0x00)
 			{
-				Speed_Real_Left = (-1)*(((int16_t)((CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4]))/8192.0*3000.0);//
-				CAN1_RxFlag |= 0x01;
-				CAN1_TxFlag &= ~0x04;
-			}
-			else if(CAN1_RxMessage.Data[1] == 0x2c && CAN1_RxMessage.Data[2] == 0xe4)
-			{
-				CAN1_RxFlag &= ~0x01;
-				CAN1_TxFlag &= ~0x04;
+				Yaw_Positon = (CAN1_RxMessage.Data[7] << 24) | (CAN1_RxMessage.Data[6] << 16) | (CAN1_RxMessage.Data[5] << 8)  | CAN1_RxMessage.Data[4];
+				if(Ask_Yaw_Position_Flag == 1)Ask_Yaw_Position_Flag = 2;
 			}
 		}
-		
-		if(CAN1_RxMessage.StdId == 0x01 && (CAN1_TxFlag & 0x08) != 0)
-		{
-			if(CAN1_RxMessage.Data[1] == 0x2b && CAN1_RxMessage.Data[2] == 0xe4 && (CAN1_RxFlag & 0x02) == 0)
-			{
-				Speed_Real_Right = ((int16_t)((CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4]))/8192.0*3000.0;//((CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4])/8192.0*3000.0
-				CAN1_RxFlag |= 0x02;
-				CAN1_TxFlag &= ~0x08;
-			}
-			else if(CAN1_RxMessage.Data[1] == 0x2c && CAN1_RxMessage.Data[2] == 0xe4)
-			{
-				CAN1_RxFlag &= ~0x02;
-				CAN1_TxFlag &= ~0x08;
-			}
-		}
+
 	}
 }
 

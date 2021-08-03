@@ -1,52 +1,35 @@
-/**
-  ******************************************************************************
-  * File Name          : main.c
-  * Description        : Main program body
-  ******************************************************************************
-  *
-  * COPYRIGHT(c) 2020 STMicroelectronics
-  *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  *
-  ******************************************************************************
-  */
-/* Includes ------------------------------------------------------------------*/
+/*记录
+*第一台
+1.UART1_RxBuffer[9]控制补光灯，0A---开，00---关
+2.UART1_RxBuffer[10]控制充电开关，02---开，01---关
+3.PI4---补光灯，PI6---充电开关
+*/
 #include "stm32f4xx_hal.h"
-
-/* USER CODE BEGIN Includes */
-
-/* USER CODE END Includes */
-
-/* Private variables ---------------------------------------------------------*/
+#include "stdio.h"
 CAN_HandleTypeDef hcan1;
 
 TIM_HandleTypeDef htim7;
 
 UART_HandleTypeDef huart1;
 
+#ifdef __GNUC__
+#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+#else
+#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+#endif
+
+PUTCHAR_PROTOTYPE
+{
+    //具体哪个串口可以更改huart1为其它串口
+    HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1 , 0xffff);
+    return ch;
+}
+
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 uint16_t Time_Cnt=0;
+uint16_t UART1_Time_Cnt=0;
+uint8_t Ask_Position_Yaw_Cnt=0; //20210802
 uint8_t Init_Flag=0;
 uint8_t Ask_Speed_L_Cnt=0;
 uint8_t Ask_Speed_R_Cnt=0;
@@ -76,6 +59,20 @@ int16_t Speed_Real_Right = 0;
 uint8_t Light_Want_Status = 0;
 uint8_t Light_Real_Status = 0;
 
+int32_t Yaw_Positon = 0; //yaw motor real position //20210802
+uint8_t Ask_Yaw_Position_Flag = 0; //0 no new position_want 1 get new position_want and moving 2 get real position and calculating //20210802
+
+int16_t phjd = 0;
+int16_t fyjd = 0;
+int64_t fyjd0 = 0;
+int64_t phjd0 = 0;
+
+int phjd1=0;
+int phjd2=0;
+int phjd3=0;
+int fyjd1=0;
+int fyjd2=0;
+int fyjd3=0;
 //right wheel can id is 01 and speed direction is positive
 
 union Hex_Float_Transfer
@@ -108,18 +105,17 @@ void Delay(__IO uint32_t nCount)
 {
   while(nCount--){}
 }
+
+int32_t abs(int32_t a)
+{
+	if(a < 0)a = -a;
+	return a;
+}
 /* USER CODE END 0 */
 
 int main(void)
 {
 
-  /* USER CODE BEGIN 1 */
-
-  /* USER CODE END 1 */
-
-  /* MCU Configuration----------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
   /* Configure the system clock */
@@ -143,84 +139,264 @@ int main(void)
 	HAL_CAN_Receive_IT(&hcan1,CAN_FIFO1);
 	HAL_UART_Receive_IT(&huart1,UART1_RxByte,1);
 	HAL_TIM_Base_Start_IT(&htim7);
-	
+
 	if(Init_Flag == 0)
 	{
-		HAL_Delay(1000);
+		HAL_Delay(4000);
 		
-		CAN1_TxMessage.StdId = 0x02;
-		CAN1_TxMessage.ExtId = 0x02;
+		CAN1_TxMessage.StdId = 0x0605;
+		CAN1_TxMessage.ExtId = 0x0605;
 		CAN1_TxMessage.IDE = CAN_ID_STD;
 		CAN1_TxMessage.RTR = CAN_RTR_DATA;
 		CAN1_TxMessage.DLC = 8;
-		CAN1_TxMessage.Data[0]=0x00;
-		CAN1_TxMessage.Data[1]=0x1A;
-		CAN1_TxMessage.Data[2]=0x02;
+		CAN1_TxMessage.Data[0]=0x2f;
+		CAN1_TxMessage.Data[1]=0x05;
+		CAN1_TxMessage.Data[2]=0x60;
 		CAN1_TxMessage.Data[3]=0x00;
-		CAN1_TxMessage.Data[4]=0xC4;
-		CAN1_TxMessage.Data[5]=0x0A;
-		CAN1_TxMessage.Data[6]=0x0A;
-		CAN1_TxMessage.Data[7]=0x0A;
-		HAL_CAN_Transmit_IT(&hcan1);//speed mode acc 0x0a
-		
-		CAN1_TxMessage.StdId = 0x01;
-		CAN1_TxMessage.ExtId = 0x01;
+		CAN1_TxMessage.Data[4]=0x00;
+		CAN1_TxMessage.Data[5]=0x00;
+		CAN1_TxMessage.Data[6]=0x00;
+		CAN1_TxMessage.Data[7]=0x00;
+		HAL_CAN_Transmit_IT(&hcan1);//帧ID605,偏航电机模式 位置
+	  
+		HAL_Delay(100);		
+		CAN1_TxMessage.StdId = 0x0605;
+		CAN1_TxMessage.ExtId = 0x0605;
 		CAN1_TxMessage.IDE = CAN_ID_STD;
 		CAN1_TxMessage.RTR = CAN_RTR_DATA;
 		CAN1_TxMessage.DLC = 8;
-		CAN1_TxMessage.Data[0]=0x00;
-		CAN1_TxMessage.Data[1]=0x1A;
-		CAN1_TxMessage.Data[2]=0x02;
+		CAN1_TxMessage.Data[0]=0x2f;
+		CAN1_TxMessage.Data[1]=0x0e;
+		CAN1_TxMessage.Data[2]=0x60;
 		CAN1_TxMessage.Data[3]=0x00;
-		CAN1_TxMessage.Data[4]=0xC4;
-		CAN1_TxMessage.Data[5]=0x0A;
-		CAN1_TxMessage.Data[6]=0x0A;
-		CAN1_TxMessage.Data[7]=0x0A;
-		HAL_CAN_Transmit_IT(&hcan1);
+		CAN1_TxMessage.Data[4]=0x01;
+		CAN1_TxMessage.Data[5]=0x00;
+		CAN1_TxMessage.Data[6]=0x00;
+		CAN1_TxMessage.Data[7]=0x00;
+		HAL_CAN_Transmit_IT(&hcan1);//帧ID605,偏航电机使能2f 0e 60 00 01 00 00 00
+	  
+		HAL_Delay(100);		
 		
-		HAL_Delay(500);
+	  CAN1_TxMessage.StdId = 0x0605;
+		CAN1_TxMessage.ExtId = 0x0605;
+		CAN1_TxMessage.IDE = CAN_ID_STD;
+		CAN1_TxMessage.RTR = CAN_RTR_DATA;
+		CAN1_TxMessage.DLC = 8;
+		CAN1_TxMessage.Data[0]=0x23;
+		CAN1_TxMessage.Data[1]=0x03;
+		CAN1_TxMessage.Data[2]=0x60;
+		CAN1_TxMessage.Data[3]=0x00;
+		CAN1_TxMessage.Data[4]=0xb8;
+		CAN1_TxMessage.Data[5]=0x0b;
+		CAN1_TxMessage.Data[6]=0x00;
+		CAN1_TxMessage.Data[7]=0x00;
+		HAL_CAN_Transmit_IT(&hcan1);//偏航电机最大速度--400，23 03 60 00 90 01 00 00
+						
+		HAL_Delay(100);
 		
+		CAN1_TxMessage.StdId = 0x00;
+		CAN1_TxMessage.ExtId = 0x00;
+		CAN1_TxMessage.IDE = CAN_ID_STD;
+		CAN1_TxMessage.RTR = CAN_RTR_DATA;
+		CAN1_TxMessage.DLC = 8;
+		CAN1_TxMessage.Data[0]=0x01;
+		CAN1_TxMessage.Data[1]=0x00;
+		CAN1_TxMessage.Data[2]=0x00;
+		CAN1_TxMessage.Data[3]=0x00;
+		CAN1_TxMessage.Data[4]=0x00;
+		CAN1_TxMessage.Data[5]=0x00;
+		CAN1_TxMessage.Data[6]=0x00;
+		CAN1_TxMessage.Data[7]=0x00;
+		HAL_CAN_Transmit_IT(&hcan1);//俯仰电机，使从站进入OP模式
+		
+		HAL_Delay(100);
+		
+		CAN1_TxMessage.StdId = 0x0201;
+		CAN1_TxMessage.ExtId = 0x0201;
+		CAN1_TxMessage.IDE = CAN_ID_STD;
+		CAN1_TxMessage.RTR = CAN_RTR_DATA;
+		CAN1_TxMessage.DLC = 8;
+		CAN1_TxMessage.Data[0]=0x06;
+		CAN1_TxMessage.Data[1]=0x00;
+		CAN1_TxMessage.Data[2]=0x00;
+		CAN1_TxMessage.Data[3]=0x00;
+		CAN1_TxMessage.Data[4]=0x00;
+		CAN1_TxMessage.Data[5]=0x00;
+		CAN1_TxMessage.Data[6]=0x00;
+		CAN1_TxMessage.Data[7]=0x00;
+		HAL_CAN_Transmit_IT(&hcan1);//俯仰电机进入操作模式
+		
+		HAL_Delay(100);
+		
+		CAN1_TxMessage.StdId = 0x0201;
+		CAN1_TxMessage.ExtId = 0x0201;
+		CAN1_TxMessage.IDE = CAN_ID_STD;
+		CAN1_TxMessage.RTR = CAN_RTR_DATA;
+		CAN1_TxMessage.DLC = 8;
+		CAN1_TxMessage.Data[0]=0x07;
+		CAN1_TxMessage.Data[1]=0x00;
+		CAN1_TxMessage.Data[2]=0x00;
+		CAN1_TxMessage.Data[3]=0x00;
+		CAN1_TxMessage.Data[4]=0x00;
+		CAN1_TxMessage.Data[5]=0x00;
+		CAN1_TxMessage.Data[6]=0x00;
+		CAN1_TxMessage.Data[7]=0x00;
+		HAL_CAN_Transmit_IT(&hcan1);//俯仰电机，使能电机
+		
+		HAL_Delay(100);
+		
+		CAN1_TxMessage.StdId = 0x0301;
+	  CAN1_TxMessage.ExtId = 0x0301;
+		CAN1_TxMessage.IDE = CAN_ID_STD;
+		CAN1_TxMessage.RTR = CAN_RTR_DATA;
+		CAN1_TxMessage.DLC = 8;
+		CAN1_TxMessage.Data[0]=0x01;
+		CAN1_TxMessage.Data[1]=0x00;
+		CAN1_TxMessage.Data[2]=0x00;
+		CAN1_TxMessage.Data[3]=0x00;
+		CAN1_TxMessage.Data[4]=0x00;
+		CAN1_TxMessage.Data[5]=0x00;
+		CAN1_TxMessage.Data[6]=0x00;
+		CAN1_TxMessage.Data[7]=0x00;
+		HAL_CAN_Transmit_IT(&hcan1);//俯仰电机找原点
+			
+		HAL_Delay(2000);
+				 		
 		Init_Flag = 1;
 	}
-	
-  /* USER CODE END 2 */
 
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
   while (1)
-  {
-//	HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0,GPIO_PIN_SET);	//PB1置1 
-//	HAL_GPIO_WritePin(GPIOB,GPIO_PIN_1,GPIO_PIN_SET);	//PB0置1  			
-//	Delay(0x7FFFFF);
-//	HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0,GPIO_PIN_RESET);	//PB1置0
-//	HAL_GPIO_WritePin(GPIOB,GPIO_PIN_1,GPIO_PIN_RESET);	//PB0置0  
-//	Delay(0x7FFFFF);
-		
+  {		
 		if(UART1_RxFlag == 3 && (CAN1_TxFlag & 0x03) == 0)
 		{
-//			HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_1);//receive a uart message successfully
 			
 			Motor_Enable = 1;//enable motor
 			Motor_Stop_Cnt = 0;
-			
-			Hex_to_Float.Hex_Num[0] = UART1_RxBuffer[2];
-			Hex_to_Float.Hex_Num[1] = UART1_RxBuffer[3];
-			Hex_to_Float.Hex_Num[2] = UART1_RxBuffer[4];
-			Hex_to_Float.Hex_Num[3] = UART1_RxBuffer[5];
-			Speed_Want_Left = (int16_t)Hex_to_Float.Float_Num;
-			if(Speed_Want_Left>=3000.0)Speed_Want_Left=3000.0;
-			if(Speed_Want_Left<=-3000.0)Speed_Want_Left=-3000.0;
+			phjd =0;
+			fyjd =0;
+	
 			CAN1_TxFlag |= 0x01;
-			
-			Hex_to_Float.Hex_Num[0] = UART1_RxBuffer[6];
-			Hex_to_Float.Hex_Num[1] = UART1_RxBuffer[7];
-			Hex_to_Float.Hex_Num[2] = UART1_RxBuffer[8];
-			Hex_to_Float.Hex_Num[3] = UART1_RxBuffer[9];
-			Speed_Want_Right = (int16_t)Hex_to_Float.Float_Num;
-			if(Speed_Want_Right>=3000.0)Speed_Want_Right=3000.0;
-			if(Speed_Want_Right<=-3000.0)Speed_Want_Right=-3000.0;
+		
 			CAN1_TxFlag |= 0x02;
 			
+			if(UART1_RxBuffer[9]==0x0a)//补光灯开关
+			{
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_4,GPIO_PIN_RESET);
+			}
+			if(UART1_RxBuffer[9]==0x00)
+			{
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_4,GPIO_PIN_SET);
+			}
+			/*if(UART1_RxBuffer[2]==0xff && UART1_RxBuffer[3]==0xff && UART1_RxBuffer[4]==0xff && UART1_RxBuffer[5]==0xff)
+			{
+				CAN1_TxMessage.StdId = 0x0605;
+				CAN1_TxMessage.ExtId = 0x0605;
+				CAN1_TxMessage.IDE = CAN_ID_STD;
+				CAN1_TxMessage.RTR = CAN_RTR_DATA;
+				CAN1_TxMessage.DLC = 8;
+				CAN1_TxMessage.Data[0]=0x2f;
+				CAN1_TxMessage.Data[1]=0x20;
+				CAN1_TxMessage.Data[2]=0x60;
+				CAN1_TxMessage.Data[3]=0x00;
+				CAN1_TxMessage.Data[4]=0x00;
+				CAN1_TxMessage.Data[5]=0x00;
+				CAN1_TxMessage.Data[6]=0x00;
+				CAN1_TxMessage.Data[7]=0x00;
+				HAL_CAN_Transmit_IT(&hcan1);//偏航电机停止
+			}*/
+			
+			phjd=(int16_t)(UART1_RxBuffer[2]*256 + UART1_RxBuffer[3]);
+			if (phjd>=3500) phjd=3500;
+			
+			phjd0=(int64_t)(phjd*46);
+			phjd1=phjd0/65535;
+			phjd2=(phjd0-phjd1*65535)/256;
+			phjd3=phjd0%256;
+			
+			fyjd=(int16_t)(UART1_RxBuffer[4]*256 + UART1_RxBuffer[5]);
+			if (fyjd>=1800) fyjd=1800;
+			
+			
+			fyjd0=(int64_t)(fyjd*30.25*4.55);
+			
+			fyjd1=fyjd0/65535;
+			
+			fyjd2=(fyjd0-fyjd1*65535)/256;
+			
+			fyjd3=fyjd0%256;
+			
+			HAL_Delay(50);
+			
+			CAN1_TxMessage.StdId = 0x0605;
+			CAN1_TxMessage.ExtId = 0x0605;
+			CAN1_TxMessage.IDE = CAN_ID_STD;
+			CAN1_TxMessage.RTR = CAN_RTR_DATA;
+			CAN1_TxMessage.DLC = 8;
+			CAN1_TxMessage.Data[0]=0x23;
+			CAN1_TxMessage.Data[1]=0x1c;
+			CAN1_TxMessage.Data[2]=0x60;
+			CAN1_TxMessage.Data[3]=0x00;
+			CAN1_TxMessage.Data[4]=(uint8_t)phjd3;
+			CAN1_TxMessage.Data[5]=(uint8_t)phjd2;
+			CAN1_TxMessage.Data[6]=(uint8_t)phjd1;
+			CAN1_TxMessage.Data[7]=0x00;
+			HAL_CAN_Transmit_IT(&hcan1);//绝对位移指令23 1c 60 00 xx xx xx xx
+			if(Ask_Yaw_Position_Flag == 0)Ask_Yaw_Position_Flag = 1; // 20210802
+			
+			HAL_Delay(300);
+			
+			if(UART1_RxBuffer[6]==0xff && UART1_RxBuffer[7]==0xff)
+		{
+			CAN1_TxMessage.StdId = 0x0301;
+			CAN1_TxMessage.ExtId = 0x0301;
+			CAN1_TxMessage.IDE = CAN_ID_STD;
+			CAN1_TxMessage.RTR = CAN_RTR_DATA;
+			CAN1_TxMessage.DLC = 8;
+			CAN1_TxMessage.Data[0]=0x01;
+			CAN1_TxMessage.Data[1]=0x00;
+			CAN1_TxMessage.Data[2]=0x00;
+			CAN1_TxMessage.Data[3]=0x00;
+			CAN1_TxMessage.Data[4]=0x00;
+			CAN1_TxMessage.Data[5]=0x00;
+			CAN1_TxMessage.Data[6]=0x00;
+			CAN1_TxMessage.Data[7]=0x00;
+			HAL_CAN_Transmit_IT(&hcan1);
+			
+			HAL_Delay(3000);
+		}
+			
+			CAN1_TxMessage.StdId = 0x0201;
+		  CAN1_TxMessage.ExtId = 0x0201;
+		  CAN1_TxMessage.IDE = CAN_ID_STD;
+			CAN1_TxMessage.RTR = CAN_RTR_DATA;
+			CAN1_TxMessage.DLC = 8;
+			CAN1_TxMessage.Data[0]=0x0f;
+			CAN1_TxMessage.Data[1]=0x00;
+			CAN1_TxMessage.Data[2]=0xff-(uint8_t)fyjd3;
+			CAN1_TxMessage.Data[3]=0xff-(uint8_t)fyjd2;
+			CAN1_TxMessage.Data[4]=0xff-(uint8_t)fyjd1;
+			CAN1_TxMessage.Data[5]=0xff;
+			CAN1_TxMessage.Data[6]=0xff;
+			CAN1_TxMessage.Data[7]=0xff;
+			HAL_CAN_Transmit_IT(&hcan1);//俯仰电机，电机转动
+			
+			HAL_Delay(300);
+			
+			CAN1_TxMessage.StdId = 0x0201;
+		  CAN1_TxMessage.ExtId = 0x0201;
+		  CAN1_TxMessage.IDE = CAN_ID_STD;
+			CAN1_TxMessage.RTR = CAN_RTR_DATA;
+			CAN1_TxMessage.DLC = 8;
+			CAN1_TxMessage.Data[0]=0x5f;
+			CAN1_TxMessage.Data[1]=0x00;
+			CAN1_TxMessage.Data[2]=0xff-(uint8_t)fyjd3;
+			CAN1_TxMessage.Data[3]=0xff-(uint8_t)fyjd2;
+			CAN1_TxMessage.Data[4]=0xff-(uint8_t)fyjd1;
+			CAN1_TxMessage.Data[5]=0xff;
+			CAN1_TxMessage.Data[6]=0xff;
+			CAN1_TxMessage.Data[7]=0xff;
+			HAL_CAN_Transmit_IT(&hcan1);//俯仰电机，电机转动
+						
 			Light_Want_Status = UART1_RxBuffer[10];
 			
 			for(int i = 0;i < 16;i++)
@@ -232,69 +408,63 @@ int main(void)
 			
 		}
 		
-		switch(Light_Want_Status)
+		if(Ask_Position_Yaw_Cnt >=50) //20210802
 		{
-			case 0x00 : 
+			CAN1_TxMessage.StdId = 0x0605;
+			CAN1_TxMessage.ExtId = 0x0605;
+			CAN1_TxMessage.IDE = CAN_ID_STD;
+		  CAN1_TxMessage.RTR = CAN_RTR_DATA;
+		  CAN1_TxMessage.DLC = 8;
+			CAN1_TxMessage.Data[0]=0x40;
+			CAN1_TxMessage.Data[1]=0x0c;
+			CAN1_TxMessage.Data[2]=0x60;
+			CAN1_TxMessage.Data[3]=0x00;
+			CAN1_TxMessage.Data[4]=0x00;
+			CAN1_TxMessage.Data[5]=0x00;
+			CAN1_TxMessage.Data[6]=0x00;
+			CAN1_TxMessage.Data[7]=0x00;
+			HAL_CAN_Transmit_IT(&hcan1);//read real positon 40 0c 60 00 00 00 00 00
+			Ask_Position_Yaw_Cnt = 0;
+		}
+			
+		if(Ask_Yaw_Position_Flag == 2) // 20210802
+		{
+			if(abs((int32_t)phjd0 - abs(Yaw_Positon)) <= 1000) // the error between positon_want and real position
 			{
-				Light_Real_Status = 0x00;
-				break;
+				UART1_TxBuffer[0]=0x55;
+				UART1_TxBuffer[1]=0xAA;
+				UART1_TxBuffer[2]=0x01;
+				UART1_TxBuffer[3]=0x01;
+				UART1_TxBuffer[4]=0x00;
+				UART1_TxBuffer[5]=0x00;
+				UART1_TxBuffer[6]=0x00;
+				UART1_TxBuffer[7]=0x00;
+				UART1_TxBuffer[8]=0x00;
+				UART1_TxBuffer[9]=0x00;
+				UART1_TxBuffer[10]=0x00;
+				UART1_TxBuffer[11]=0x0A;
+				UART1_TxFlag = 1;
+				Ask_Yaw_Position_Flag = 0;
 			}
+			else
+			{
+				Ask_Yaw_Position_Flag = 1;
+			}
+		}
+		
+		switch(Light_Want_Status)//充电开关
+		{
 			case 0x01 : 
 			{
-				Light_Real_Status = 0x01;
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_6,GPIO_PIN_SET);
 				break;
 			}
 			case 0x02 : 
 			{
-				Light_Real_Status = 0x02;
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_6,GPIO_PIN_RESET);
 				break;
-			}
-			case 0x03 : 
-			{
-				Light_Real_Status = 0x03;
-				break;
-			}
-			default : 
-			{
-				Light_Real_Status = 0xFF;
-				break;
-			}
-		}
-		
-		if(CAN1_RxFlag == 0x03 && UART1_TxFlag == 0)//both bit0 and bit1 are 1
-		{
-			UART1_TxBuffer[0] = 0x55;
-			UART1_TxBuffer[1] = 0xAA;
-			
-			Float_to_Hex.Float_Num = (float)Speed_Real_Left;
-			CAN1_RxFlag &= ~0x01;
-			UART1_TxBuffer[2] = Float_to_Hex.Hex_Num[0];
-			UART1_TxBuffer[3] = Float_to_Hex.Hex_Num[1];
-			UART1_TxBuffer[4] = Float_to_Hex.Hex_Num[2];
-			UART1_TxBuffer[5] = Float_to_Hex.Hex_Num[3];
-			
-			Float_to_Hex.Float_Num = (float)Speed_Real_Right;
-			CAN1_RxFlag &= ~0x02;
-			UART1_TxBuffer[6] = Float_to_Hex.Hex_Num[0];
-			UART1_TxBuffer[7] = Float_to_Hex.Hex_Num[1];
-			UART1_TxBuffer[8] = Float_to_Hex.Hex_Num[2];
-			UART1_TxBuffer[9] = Float_to_Hex.Hex_Num[3];
-			
-			UART1_TxBuffer[10] = Light_Real_Status;
-			UART1_TxBuffer[11] = 0x0A;
-			
-			UART1_TxFlag = 1;
-		}
-		
-		if(Speed_Want_Left>=3000.0)Speed_Want_Left=3000.0;
-		if(Speed_Want_Left<=-3000.0)Speed_Want_Left=-3000.0;
-		if(Speed_Want_Right>=3000.0)Speed_Want_Right=3000.0;
-		if(Speed_Want_Right<=-3000.0)Speed_Want_Right=-3000.0;
-		
-  /* USER CODE END WHILE */
-
-  /* USER CODE BEGIN 3 */
-
+			}			
+		}	
   }
   /* USER CODE END 3 */
 
@@ -434,6 +604,7 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+	__HAL_RCC_GPIOI_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, DS0_Pin|DS1_Pin, GPIO_PIN_SET);
@@ -444,6 +615,14 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+	
+	HAL_GPIO_WritePin(GPIOI, GPIO_PIN_4 | GPIO_PIN_6, GPIO_PIN_SET);
+
+  GPIO_InitStruct.Pin = GPIO_PIN_4 | GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+  HAL_GPIO_Init(GPIOI, &GPIO_InitStruct);
 
 }
 
