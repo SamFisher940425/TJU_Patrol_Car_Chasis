@@ -43,6 +43,10 @@ CanRxMsgTypeDef CAN1_RxMessage;
 
 uint8_t Motor_Enable = 0;
 uint16_t Motor_Stop_Cnt = 0;
+uint8_t Motor_Left_Error_Flag = 0;
+uint8_t Motor_Left_Error_Clear_Flag = 0;
+uint8_t Motor_Right_Error_Flag = 0;
+uint8_t Motor_Right_Error_Clear_Flag = 0;
 
 int16_t Speed_Want_Left = 0;
 int16_t Speed_Want_Right = 0;
@@ -190,7 +194,9 @@ int main(void)
 			if(Speed_Want_Right<=-3000.0)Speed_Want_Right=-3000.0;
 			CAN1_TxFlag |= 0x02;
 			
-			Light_Want_Status = UART1_RxBuffer[10];
+			Light_Want_Status = UART1_RxBuffer[10] & 0x0F; // get low 4 bit
+			Motor_Left_Error_Clear_Flag = (UART1_RxBuffer[10] >> 4) & 0x01; // get 5th bit
+			Motor_Right_Error_Clear_Flag = Motor_Left_Error_Clear_Flag;
 			
 			for(int i = 0;i < 16;i++)
 			{
@@ -252,7 +258,7 @@ int main(void)
 			}
 			default : 
 			{
-				Light_Real_Status = 0xFF;
+				Light_Real_Status = 0x0F; //changed high 4 bit for motor error infomation
 				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_5,GPIO_PIN_SET);
 				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_6,GPIO_PIN_SET);
 				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_7,GPIO_PIN_RESET);
@@ -280,7 +286,7 @@ int main(void)
 			UART1_TxBuffer[8] = Float_to_Hex.Hex_Num[2];
 			UART1_TxBuffer[9] = Float_to_Hex.Hex_Num[3];
 			
-			UART1_TxBuffer[10] = Light_Real_Status;
+			UART1_TxBuffer[10] = Motor_Left_Error_Flag; //Light_Real_Status
 			UART1_TxBuffer[11] = 0x0A;
 			
 			UART1_TxFlag = 1;
