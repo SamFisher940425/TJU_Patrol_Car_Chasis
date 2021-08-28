@@ -1,35 +1,9 @@
-/**
-  ******************************************************************************
-  * File Name          : main.c
-  * Description        : Main program body
-  ******************************************************************************
-  *
-  * COPYRIGHT(c) 2020 STMicroelectronics
-  *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  *
-  ******************************************************************************
-  */
+/*º«¬º
+*µ⁄“ªÃ®
+1.»˝…´µ∆ PI4---∫Ïµ∆£¨PI5---ª∆µ∆£¨PI6---¬Ãµ∆£¨PI7---√˘µ—
+2.UART1_RxBuffer[10]øÿ÷∆»˝…´µ∆£¨00---¬Ãµ∆¡¡£¨01---ª∆µ∆¡¡£¨02---∫Ïµ∆¡¡£¨03---√˘µ—£¨04---πÿ±’»˝…´µ∆£¨FF---∫Ïµ∆¡¡+√˘µ—
+*/
+
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
 
@@ -59,6 +33,8 @@ uint8_t UART1_TxByte[1];
 uint8_t UART1_TxBuffer[16];
 uint8_t UART1_TxBufPtr = 0;
 uint8_t UART1_TxFlag = 0;//0 1
+uint8_t UART1_return = 0;//0 1
+
 
 uint8_t CAN1_TxFlag = 0;//bit0 set speed_L,bit1 set speed_R,bit2 asked speed_L,bit3 asked speed_R
 uint8_t CAN1_RxFlag = 0;//bit0 get speed_L,bit1 get speed_R
@@ -146,22 +122,7 @@ int main(void)
 	
 	if(Init_Flag == 0)
 	{
-		HAL_Delay(1000);
-		
-		CAN1_TxMessage.StdId = 0x02;
-		CAN1_TxMessage.ExtId = 0x02;
-		CAN1_TxMessage.IDE = CAN_ID_STD;
-		CAN1_TxMessage.RTR = CAN_RTR_DATA;
-		CAN1_TxMessage.DLC = 8;
-		CAN1_TxMessage.Data[0]=0x00;
-		CAN1_TxMessage.Data[1]=0x1A;
-		CAN1_TxMessage.Data[2]=0x02;
-		CAN1_TxMessage.Data[3]=0x00;
-		CAN1_TxMessage.Data[4]=0xC4;
-		CAN1_TxMessage.Data[5]=0x0A;
-		CAN1_TxMessage.Data[6]=0x0A;
-		CAN1_TxMessage.Data[7]=0x0A;
-		HAL_CAN_Transmit_IT(&hcan1);//speed mode acc 0x0a
+		HAL_Delay(3000);
 		
 		CAN1_TxMessage.StdId = 0x01;
 		CAN1_TxMessage.ExtId = 0x01;
@@ -174,11 +135,28 @@ int main(void)
 		CAN1_TxMessage.Data[3]=0x00;
 		CAN1_TxMessage.Data[4]=0xC4;
 		CAN1_TxMessage.Data[5]=0x0A;
-		CAN1_TxMessage.Data[6]=0x0A;
-		CAN1_TxMessage.Data[7]=0x0A;
+		CAN1_TxMessage.Data[6]=0x1E;
+		CAN1_TxMessage.Data[7]=0x1E;
+		HAL_CAN_Transmit_IT(&hcan1);//speed mode acc 0x0a
+		
+		HAL_Delay(10);
+		
+		CAN1_TxMessage.StdId = 0x02;
+		CAN1_TxMessage.ExtId = 0x02;
+		CAN1_TxMessage.IDE = CAN_ID_STD;
+		CAN1_TxMessage.RTR = CAN_RTR_DATA;
+		CAN1_TxMessage.DLC = 8;
+		CAN1_TxMessage.Data[0]=0x00;
+		CAN1_TxMessage.Data[1]=0x1A;
+		CAN1_TxMessage.Data[2]=0x02;
+		CAN1_TxMessage.Data[3]=0x00;
+		CAN1_TxMessage.Data[4]=0xC4;
+		CAN1_TxMessage.Data[5]=0x0A;
+		CAN1_TxMessage.Data[6]=0x1E;
+		CAN1_TxMessage.Data[7]=0x1E;
 		HAL_CAN_Transmit_IT(&hcan1);
 		
-		HAL_Delay(500);
+		HAL_Delay(100);
 		
 		Init_Flag = 1;
 	}
@@ -189,17 +167,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-//	HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0,GPIO_PIN_SET);	//PB1÷√1 
-//	HAL_GPIO_WritePin(GPIOB,GPIO_PIN_1,GPIO_PIN_SET);	//PB0÷√1  			
-//	Delay(0x7FFFFF);
-//	HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0,GPIO_PIN_RESET);	//PB1÷√0
-//	HAL_GPIO_WritePin(GPIOB,GPIO_PIN_1,GPIO_PIN_RESET);	//PB0÷√0  
-//	Delay(0x7FFFFF);
-		
 		if(UART1_RxFlag == 3 && (CAN1_TxFlag & 0x03) == 0)
 		{
-//			HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_1);//receive a uart message successfully
-			
 			Motor_Enable = 1;//enable motor
 			Motor_Stop_Cnt = 0;
 			
@@ -229,7 +198,8 @@ int main(void)
 			}
 			UART1_RxBufPtr = 0;
 			UART1_RxFlag = 0;
-			
+			UART1_return = 1;
+
 		}
 		
 		switch(Light_Want_Status)
@@ -237,31 +207,61 @@ int main(void)
 			case 0x00 : 
 			{
 				Light_Real_Status = 0x00;
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_4,GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_5,GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_7,GPIO_PIN_SET);
+        HAL_GPIO_WritePin(GPIOI,GPIO_PIN_6,GPIO_PIN_RESET); //¬Ãµ∆¡¡
 				break;
 			}
 			case 0x01 : 
 			{
 				Light_Real_Status = 0x01;
+				//HAL_GPIO_WritePin(GPIOB,GPIO_PIN_1,GPIO_PIN_SET);   //LED0∂‘”¶“˝Ω≈PB1¿≠∏ﬂ£¨√£¨µ»Õ¨”⁄LED0(1)
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_4,GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_6,GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_7,GPIO_PIN_SET);
+        HAL_GPIO_WritePin(GPIOI,GPIO_PIN_5,GPIO_PIN_RESET); //ª∆µ∆¡¡
 				break;
 			}
 			case 0x02 : 
 			{
 				Light_Real_Status = 0x02;
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_5,GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_6,GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_7,GPIO_PIN_SET);
+        HAL_GPIO_WritePin(GPIOI,GPIO_PIN_4,GPIO_PIN_RESET); //∫Ïµ∆¡¡
 				break;
 			}
 			case 0x03 : 
 			{
 				Light_Real_Status = 0x03;
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_4,GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_5,GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_6,GPIO_PIN_SET);
+        HAL_GPIO_WritePin(GPIOI,GPIO_PIN_7,GPIO_PIN_RESET); //√˘µ—
+				break;
+			}
+			case 0x04 : 
+			{
+				Light_Real_Status = 0x04;
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_4,GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_5,GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_6,GPIO_PIN_SET);
+        HAL_GPIO_WritePin(GPIOI,GPIO_PIN_7,GPIO_PIN_SET);//πÿ±’»˝…´µ∆
 				break;
 			}
 			default : 
 			{
 				Light_Real_Status = 0xFF;
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_5,GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_6,GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_7,GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOI,GPIO_PIN_4,GPIO_PIN_RESET); //∫Ïµ∆¡¡+√˘µ—
 				break;
 			}
 		}
 		
-		if(CAN1_RxFlag == 0x03 && UART1_TxFlag == 0)//both bit0 and bit1 are 1
+		if(CAN1_RxFlag == 0x03 && UART1_TxFlag == 0 && UART1_return == 1)//both bit0 and bit1 are 1
 		{
 			UART1_TxBuffer[0] = 0x55;
 			UART1_TxBuffer[1] = 0xAA;
@@ -284,6 +284,7 @@ int main(void)
 			UART1_TxBuffer[11] = 0x0A;
 			
 			UART1_TxFlag = 1;
+			
 		}
 		
 		if(Speed_Want_Left>=3000.0)Speed_Want_Left=3000.0;
@@ -434,6 +435,7 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+	__HAL_RCC_GPIOI_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, DS0_Pin|DS1_Pin, GPIO_PIN_SET);
@@ -444,6 +446,15 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+	
+	HAL_GPIO_WritePin(GPIOI, GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7, GPIO_PIN_SET);
+
+	GPIO_InitStruct.Pin=GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7; //PB1,0
+  GPIO_InitStruct.Mode=GPIO_MODE_OUTPUT_PP;  //Õ∆ÕÏ ‰≥ˆ
+  GPIO_InitStruct.Pull=GPIO_PULLUP;          //…œ¿≠
+  GPIO_InitStruct.Speed=GPIO_SPEED_HIGH;     //∏ﬂÀŸ
+  HAL_GPIO_Init(GPIOI,&GPIO_InitStruct);
+	
 
 }
 
