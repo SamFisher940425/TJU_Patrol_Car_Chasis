@@ -60,8 +60,10 @@ extern CanRxMsgTypeDef CAN1_RxMessage;
 extern uint8_t Motor_Enable;
 extern uint16_t Motor_Stop_Cnt;
 extern uint8_t Motor_Left_Error_Flag;
+extern uint8_t Motor_Left_Overload_Flag;
 extern uint8_t Motor_Left_Error_Clear_Flag;
 extern uint8_t Motor_Right_Error_Flag;
+extern uint8_t Motor_Right_Overload_Flag;
 extern uint8_t Motor_Right_Error_Clear_Flag;
 
 extern int16_t Speed_Want_Left;
@@ -329,7 +331,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			CAN1_TxMessage.Data[2]=0xe4;
 			CAN1_TxMessage.Data[3]=0x00;
 			CAN1_TxMessage.Data[4]=0x00;
-			CAN1_TxMessage.Data[5]=0xe3;
+			if(Motor_Left_Error_Clear_Flag != 0 && Motor_Left_Overload_Flag != 0)
+				CAN1_TxMessage.Data[5]=0x4a;
+			else
+				CAN1_TxMessage.Data[5]=0xe3;
 			CAN1_TxMessage.Data[6]=0x00;
 			CAN1_TxMessage.Data[7]=0x00;
 			HAL_CAN_Transmit_IT(&hcan1);
@@ -351,7 +356,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			CAN1_TxMessage.Data[2]=0xe4;
 			CAN1_TxMessage.Data[3]=0x00;
 			CAN1_TxMessage.Data[4]=0x00;
-			CAN1_TxMessage.Data[5]=0xe3;
+			if(Motor_Right_Error_Clear_Flag != 0 && Motor_Right_Overload_Flag != 0)
+				CAN1_TxMessage.Data[5]=0x4a;
+			else
+				CAN1_TxMessage.Data[5]=0xe3;
 			CAN1_TxMessage.Data[6]=0x00;
 			CAN1_TxMessage.Data[7]=0x00;
 			HAL_CAN_Transmit_IT(&hcan1);
@@ -487,7 +495,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 				UART1_RxFlag = 101;
 			}
 		}
-		//Byte 3-11//
+		//Byte 3-12//
 		else if (UART1_RxFlag == 2)
 		{
 			if(UART1_RxBufPtr >= 11)
@@ -532,7 +540,13 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 			if(CAN1_RxMessage.Data[1] == 0x2b && CAN1_RxMessage.Data[2] == 0xe4 && (CAN1_RxFlag & 0x01) == 0)
 			{
 				Speed_Real_Left = (-1)*(((int16_t)((CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4]))/8192.0*3000.0);//
-				Motor_Left_Error_Flag = CAN1_RxMessage.Data[7];
+				if(CAN1_RxMessage.Data[5] == 0xe3)Motor_Left_Error_Flag = CAN1_RxMessage.Data[7];
+				if(CAN1_RxMessage.Data[5] == 0x4a)
+				{
+					Motor_Left_Error_Clear_Flag = 0;
+					Motor_Left_Overload_Flag = 0;
+					Motor_Left_Error_Flag &= 0x81;
+				}
 				CAN1_RxFlag |= 0x01;
 				CAN1_TxFlag &= ~0x04;
 			}
@@ -548,7 +562,13 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 			if(CAN1_RxMessage.Data[1] == 0x2b && CAN1_RxMessage.Data[2] == 0xe4 && (CAN1_RxFlag & 0x02) == 0)
 			{
 				Speed_Real_Right = ((int16_t)((CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4]))/8192.0*3000.0;//((CAN1_RxMessage.Data[3] << 8) | CAN1_RxMessage.Data[4])/8192.0*3000.0
-				Motor_Right_Error_Flag = CAN1_RxMessage.Data[7];
+				if(CAN1_RxMessage.Data[5] == 0xe3)Motor_Right_Error_Flag = CAN1_RxMessage.Data[7];
+				if(CAN1_RxMessage.Data[5] == 0x4a)
+				{
+					Motor_Right_Error_Clear_Flag = 0;
+					Motor_Right_Overload_Flag = 0;
+					Motor_Right_Error_Flag &= 0x81;
+				}
 				CAN1_RxFlag |= 0x02;
 				CAN1_TxFlag &= ~0x08;
 			}

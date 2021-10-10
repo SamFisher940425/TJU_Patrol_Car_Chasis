@@ -43,9 +43,11 @@ CanRxMsgTypeDef CAN1_RxMessage;
 
 uint8_t Motor_Enable = 0;
 uint16_t Motor_Stop_Cnt = 0;
-uint8_t Motor_Left_Error_Flag = 0;
+uint8_t Motor_Left_Error_Flag = 0; //0x40 is overload
+uint8_t Motor_Left_Overload_Flag = 0;
 uint8_t Motor_Left_Error_Clear_Flag = 0;
-uint8_t Motor_Right_Error_Flag = 0;
+uint8_t Motor_Right_Error_Flag = 0; //0x40 is overload
+uint8_t Motor_Right_Overload_Flag = 0;
 uint8_t Motor_Right_Error_Clear_Flag = 0;
 
 int16_t Speed_Want_Left = 0;
@@ -195,8 +197,16 @@ int main(void)
 			CAN1_TxFlag |= 0x02;
 			
 			Light_Want_Status = UART1_RxBuffer[10] & 0x0F; // get low 4 bit
-			Motor_Left_Error_Clear_Flag = (UART1_RxBuffer[10] >> 4) & 0x01; // get 5th bit
-			Motor_Right_Error_Clear_Flag = Motor_Left_Error_Clear_Flag;
+			
+			if(Motor_Left_Overload_Flag != 0)
+				Motor_Left_Error_Clear_Flag = (UART1_RxBuffer[10] >> 4) & 0x01; // get 5th bit
+			else
+				Motor_Left_Error_Clear_Flag = 0;
+			
+			if(Motor_Right_Overload_Flag != 0)
+				Motor_Right_Error_Clear_Flag = (UART1_RxBuffer[10] >> 4) & 0x01;
+			else
+				Motor_Right_Error_Clear_Flag = 0;
 			
 			for(int i = 0;i < 16;i++)
 			{
@@ -256,6 +266,15 @@ int main(void)
         HAL_GPIO_WritePin(GPIOI,GPIO_PIN_7,GPIO_PIN_SET);//¹Ø±ÕÈýÉ«µÆ
 				break;
 			}
+			case 0x0a : 
+			{
+				Light_Real_Status = 0x0A;
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_5,GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_6,GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOI,GPIO_PIN_7,GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOI,GPIO_PIN_4,GPIO_PIN_RESET); // ±¨¾¯ ºìµÆÁÁ+ÃùµÑ
+				break;
+			}
 			default : 
 			{
 				Light_Real_Status = 0x0F; //changed high 4 bit for motor error infomation
@@ -286,7 +305,20 @@ int main(void)
 			UART1_TxBuffer[8] = Float_to_Hex.Hex_Num[2];
 			UART1_TxBuffer[9] = Float_to_Hex.Hex_Num[3];
 			
-			UART1_TxBuffer[10] = Motor_Left_Error_Flag; //Light_Real_Status
+			Motor_Left_Overload_Flag = (Motor_Left_Error_Flag >> 6) & 0x01;
+			Motor_Right_Overload_Flag = (Motor_Right_Error_Flag >> 6) & 0x01;
+			
+			UART1_TxBuffer[10] = Light_Real_Status; //Light_Real_Status
+			
+			if( Motor_Left_Overload_Flag != 0 || Motor_Right_Overload_Flag != 0)
+			{
+				UART1_TxBuffer[10] |= 0x10;
+			}
+			else
+			{
+				UART1_TxBuffer[10] &= ~0x10;
+			}
+			
 			UART1_TxBuffer[11] = 0x0A;
 			
 			UART1_TxFlag = 1;
