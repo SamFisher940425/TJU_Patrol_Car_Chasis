@@ -331,10 +331,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			CAN1_TxMessage.Data[2]=0xe4;
 			CAN1_TxMessage.Data[3]=0x00;
 			CAN1_TxMessage.Data[4]=0x00;
-			if(Motor_Left_Error_Clear_Flag != 0 && Motor_Left_Overload_Flag != 0)
-				CAN1_TxMessage.Data[5]=0x4a;
-			else
-				CAN1_TxMessage.Data[5]=0xe3;
+			CAN1_TxMessage.Data[5]=0xe3;
 			CAN1_TxMessage.Data[6]=0x00;
 			CAN1_TxMessage.Data[7]=0x00;
 			HAL_CAN_Transmit_IT(&hcan1);
@@ -356,10 +353,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			CAN1_TxMessage.Data[2]=0xe4;
 			CAN1_TxMessage.Data[3]=0x00;
 			CAN1_TxMessage.Data[4]=0x00;
-			if(Motor_Right_Error_Clear_Flag != 0 && Motor_Right_Overload_Flag != 0)
-				CAN1_TxMessage.Data[5]=0x4a;
-			else
-				CAN1_TxMessage.Data[5]=0xe3;
+			CAN1_TxMessage.Data[5]=0xe3;
 			CAN1_TxMessage.Data[6]=0x00;
 			CAN1_TxMessage.Data[7]=0x00;
 			HAL_CAN_Transmit_IT(&hcan1);
@@ -378,17 +372,33 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			CAN1_TxMessage.DLC = 8;
 			CAN1_TxMessage.Data[0]=0x00;
 			CAN1_TxMessage.Data[1]=0x1A;
-			CAN1_TxMessage.Data[2]=0x00;
-			CAN1_TxMessage.Data[3]=0x00;
-			if(Motor_Enable == 1)
-				CAN1_TxMessage.Data[4]=0x01;
-			else
+			if(Motor_Left_Error_Clear_Flag != 0 && Motor_Left_Overload_Flag != 0)
+			{
+				CAN1_TxMessage.Data[2]=0x4a;
+				CAN1_TxMessage.Data[3]=0x00;
 				CAN1_TxMessage.Data[4]=0x00;
+			}
+			else
+			{
+				CAN1_TxMessage.Data[2]=0x00;
+				CAN1_TxMessage.Data[3]=0x00;
+				if(Motor_Enable == 1)
+					CAN1_TxMessage.Data[4]=0x01;
+				else
+					CAN1_TxMessage.Data[4]=0x00;
+			}
 			CAN1_TxMessage.Data[5]=0x06;
 			CAN1_TxMessage.Data[6]=(((int16_t)((-1.0)*Speed_Want_Left/3000.0*8192.0)) >> 8) & 0x00FF;
 			CAN1_TxMessage.Data[7]=((int16_t)((-1.0)*Speed_Want_Left/3000.0*8192.0)) & 0x00FF;
 			
 			HAL_CAN_Transmit_IT(&hcan1);//speed set motor enable/disable
+			
+			if(Motor_Left_Error_Clear_Flag != 0 && Motor_Left_Overload_Flag != 0)
+			{
+				Motor_Left_Error_Clear_Flag = 0;
+				Motor_Left_Overload_Flag = 0;
+				Motor_Left_Error_Flag &= 0x81;
+			}
 			
 			CAN1_TxFlag &= ~0x01;
 		}
@@ -403,17 +413,33 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			CAN1_TxMessage.DLC = 8;
 			CAN1_TxMessage.Data[0]=0x00;
 			CAN1_TxMessage.Data[1]=0x1A;
-			CAN1_TxMessage.Data[2]=0x00;
-			CAN1_TxMessage.Data[3]=0x00;
-			if(Motor_Enable == 1)
-				CAN1_TxMessage.Data[4]=0x01;
-			else
+			if(Motor_Right_Error_Clear_Flag != 0 && Motor_Right_Overload_Flag != 0)
+			{
+				CAN1_TxMessage.Data[2]=0x4a;
+				CAN1_TxMessage.Data[3]=0x00;
 				CAN1_TxMessage.Data[4]=0x00;
+			}
+			else
+			{
+				CAN1_TxMessage.Data[2]=0x00;
+				CAN1_TxMessage.Data[3]=0x00;
+				if(Motor_Enable == 1)
+					CAN1_TxMessage.Data[4]=0x01;
+				else
+					CAN1_TxMessage.Data[4]=0x00;
+			}
 			CAN1_TxMessage.Data[5]=0x06;
 			CAN1_TxMessage.Data[6]=(((int16_t)(Speed_Want_Right/3000.0*8192.0)) >> 8) & 0x00FF;
 			CAN1_TxMessage.Data[7]=((int16_t)(Speed_Want_Right/3000.0*8192.0)) & 0x00FF;
 			
 			HAL_CAN_Transmit_IT(&hcan1);//speed set motor enable/disable
+			
+			if(Motor_Right_Error_Clear_Flag != 0 && Motor_Right_Overload_Flag != 0)
+			{
+				Motor_Right_Error_Clear_Flag = 0;
+				Motor_Right_Overload_Flag = 0;
+				Motor_Right_Error_Flag &= 0x81;
+			}
 			
 			CAN1_TxFlag &= ~0x02;
 		}
