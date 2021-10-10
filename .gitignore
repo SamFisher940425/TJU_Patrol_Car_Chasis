@@ -1,4 +1,5 @@
 /MDK-ARM/Template.uvguix*
 /MDK-ARM/*.uvprojx
 /MDK-ARM/Template/*
+/MDK-ARM/RTE/*
 /MDK-ARM/*.lst
